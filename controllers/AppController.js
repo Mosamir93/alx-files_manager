@@ -8,10 +8,10 @@ function getStatus(req, res) {
   });
 }
 
-function getStats(req, res) {
+async function getStats(req, res) {
   return res.status(200).json({
-    users: dbClient.nbUsers(),
-    files: dbClient.nbFiles(),
+    users: await dbClient.nbUsers(),
+    files: await dbClient.nbFiles(),
   });
 }
 
