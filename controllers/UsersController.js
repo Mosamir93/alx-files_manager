@@ -19,8 +19,13 @@ class UsersController {
       return res.status(400).json({ error: 'Already exist' });
     }
 
-    const hashedPassword = crypto.createHash('sha1').update(password).digest('hex');
-    const result = await dbClient.db.collection('users').insertOne({ email, password: hashedPassword });
+    const hashedPassword = crypto
+      .createHash('sha1')
+      .update(password)
+      .digest('hex');
+    const result = await dbClient.db
+      .collection('users')
+      .insertOne({ email, password: hashedPassword });
 
     return res.status(201).json({ id: result.insertedId, email });
   }
@@ -34,7 +39,9 @@ class UsersController {
 
     const userId = await redisClient.get(`auth_${token}`);
 
-    const user = await dbClient.db.collection('users').findOne({ _id: new ObjectId(userId) });
+    const user = await dbClient.db
+      .collection('users')
+      .findOne({ _id: new ObjectId(userId) });
 
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
