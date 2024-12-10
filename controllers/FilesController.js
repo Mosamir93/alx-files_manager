@@ -132,7 +132,6 @@ class FilesController {
       type: file.type,
       isPublic: file.isPublic,
       parentId: file.parentId,
-      localPath: file.localPath,
     }));
 
     return res.status(200).json(response);
