@@ -75,7 +75,7 @@ class FilesController {
   }
 
   static async getAuthenticatedUser(req) {
-    const token = req.header('X-Token');
+    const token = req.header('x-token');
     if (!token) return {};
 
     const userId = await redisClient.get(`auth_${token}`);
