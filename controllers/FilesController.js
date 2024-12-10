@@ -76,21 +76,22 @@ class FilesController {
 
   static async getShow(req, res) {
     const token = req.headers['x-token'];
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
-
     const userId = await redisClient.get(`auth_${token}`);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const fileId = req.params.id;
-    if (!fileId) return res.status(404).json({ error: 'Not found' });
+    const { id } = req.params;
+    const file = await dbClient.db.collection('files').findOne({
+      _id: ObjectId(id),
+      userId: ObjectId(userId),
+    });
 
-    const file = await dbClient.db
-      .collection('files')
-      .findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
     if (!file) return res.status(404).json({ error: 'Not found' });
 
+    file.id = file._id;
+    delete file._id;
+
     return res.status(200).json({
-      id: file._id,
+      id: file.id,
       userId: file.userId,
       name: file.name,
       type: file.type,
@@ -100,40 +101,30 @@ class FilesController {
   }
 
   static async getIndex(req, res) {
-    const token = req.headers['x-token'] || req.headers['X-Token'];
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
-
+    const token = req.headers['x-token'];
     const userId = await redisClient.get(`auth_${token}`);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const parentId = req.query.parentId || '0';
-    const page = isNaN(parseInt(req.query.page, 10)) ? 0 : parseInt(req.query.page, 10);
+    const { parentId = 0, page = 0 } = req.query;
+    const query = { userId: ObjectId(userId) };
+    if (parentId !== 0) query.parentId = ObjectId(parentId);
 
-    const pipeline = [
-      {
-        $match: {
-          userId: ObjectId(userId),
-          parentId: parentId === '0' ? 0 : ObjectId(parentId),
-        },
-      },
-      { $skip: page * 20 },
-      { $limit: 20 },
-    ];
-
-    const files = await dbClient.db
-      .collection('files')
-      .aggregate(pipeline)
+    const files = await dbClient.db.collection('files')
+      .find(query)
+      .skip(parseInt(page, 10) * 20)
+      .limit(20)
       .toArray();
-    const response = files.map((file) => ({
-      id: file._id,
-      userId: file.userId,
-      name: file.name,
-      type: file.type,
-      isPublic: file.isPublic,
-      parentId: file.parentId,
-    }));
 
-    return res.status(200).json(response);
+    return res.status(200).json(
+      files.map((file) => ({
+        id: file._id,
+        userId: file.userId,
+        name: file.name,
+        type: file.type,
+        isPublic: file.isPublic,
+        parentId: file.parentId,
+      })),
+    );
   }
 
   static async putPublish(req, res) {
