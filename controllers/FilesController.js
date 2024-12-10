@@ -60,7 +60,15 @@ class FilesController {
     const result = await dbClient.db.collection('files').insertOne(newFile);
     newFile._id = result.insertedId;
 
-    return res.status(201).json(newFile);
+    return res.status(201).json({
+      id: newFile._id,
+      userId,
+      name,
+      type,
+      isPublic,
+      parentId,
+      localPath: newFile.localPath || undefined,
+    });
   }
 
   static async getShow(req, res) {
@@ -78,7 +86,15 @@ class FilesController {
       .findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
     if (!file) return res.status(404).json({ error: 'Not found' });
 
-    return res.status(200).json(file);
+    return res.status(200).json({
+      id: file._id,
+      userId: file.userId,
+      name: file.name,
+      type: file.type,
+      isPublic: file.isPublic,
+      parentId: file.parentId,
+      localPath: file.localPath,
+    });
   }
 
   static async getIndex(req, res) {
