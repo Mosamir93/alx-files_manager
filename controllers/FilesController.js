@@ -52,8 +52,8 @@ class FilesController {
     if (type !== 'folder') {
       const filePath = path.join(FOLDER_PATH, uuidv4());
 
-      if (!fs.existsSync(FOLDER_PATH)) fs.mkdir(FOLDER_PATH, { recursive: true });
-      fs.writeFile(filePath, Buffer.from(data, 'base64'));
+      if (!fs.existsSync(FOLDER_PATH)) fs.mkdirSync(FOLDER_PATH, { recursive: true });
+      await fs.promises.writeFile(filePath, Buffer.from(data, 'base64'));
       newFile.localPath = filePath;
     }
 
