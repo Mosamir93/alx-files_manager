@@ -1,10 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
-import path from 'path';
+const path = require('path');
 import { ObjectId } from 'mongodb';
-import mime from 'mime-types';
+const mime = require('mime-types');
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
+const Queue = require('bull');
+const fileQueue = new Queue('fileQueue');
 
 const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager';
 
@@ -60,6 +62,9 @@ class FilesController {
 
     const result = await dbClient.db.collection('files').insertOne(newFile);
     newFile._id = result.insertedId;
+    if (file.type === 'image') {
+      fileQueue.add({ fileId: file._id, userId: file.userId });
+    }
 
     return res.status(201).json({
       id: newFile._id,
@@ -86,7 +91,6 @@ class FilesController {
     if (!file) return res.status(404).json({ error: 'Not found' });
 
     file.id = file._id;
-    delete file._id;
 
     return res.status(200).json({
       id: file.id,
@@ -193,24 +197,35 @@ class FilesController {
 
   static async getFile(req, res) {
     const { id } = req.params;
-    const file = await dbClient.db.collection('files').findOne({ _id: ObjectId(id) });
-    if (!file) return res.status(404).json({ error: 'Not found' });
-    if (file.type === 'folder') {
-      return res.status(400).json({ error: "A folder doesn't have content" });
+    const { size } = req.query;
+    const userToken = req.header('X-Token');
+
+    const userId = await redisClient.get(`auth_${userToken}`);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    try {
+      const file = await dbClient.getFileById(id);
+      if (!file) return res.status(404).json({ error: 'Not found' });
+
+      if (!file.isPublic && file.userId !== userId) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      if (file.type === 'folder') {
+        return res.status(400).json({ error: "A folder doesn't have content" });
+      }
+
+      let filePath = path.join('/tmp/files_manager', file.localPath);
+      if (size) filePath += `_${size}`;
+
+      if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
+
+      const mimeType = mime.lookup(file.name);
+      res.setHeader('Content-Type', mimeType);
+      return res.sendFile(filePath);
+    } catch (err) {
+      return res.status(500).json({ error: 'Internal Server Error' });
     }
-    const token = req.headers['x-token'];
-    const userId = token ? await redisClient.get(`auth_${token}`) : null;
-    if (!file.isPublic && (!userId || file.userId.toString() !== userId)) {
-      return res.status(404).json({ error: 'Not found' });
-    }
-    const { localPath } = file;
-    if (!localPath || !fs.existsSync(localPath)) {
-      return res.status(404).json({ error: 'Not found' });
-    }
-    const mimeType = mime.lookup(file.name) || 'application/octet-stream';
-    const fileStream = fs.createReadStream(localPath);
-    res.setHeader('Content-Type', mimeType);
-    return fileStream.pipe(res);
   }
 }
 
