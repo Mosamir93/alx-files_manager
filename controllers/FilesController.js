@@ -200,7 +200,7 @@ class FilesController {
   static async getFile(req, res) {
     const { id } = req.params;
     const { size } = req.query;
-    const userToken = req.header('X-Token');
+    const userToken = req.header('x-token');
 
     const userId = await redisClient.get(`auth_${userToken}`);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
