@@ -200,34 +200,28 @@ class FilesController {
   static async getFile(req, res) {
     const { id } = req.params;
     const { size } = req.query;
-    const userToken = req.header('x-token');
-
-    const userId = await redisClient.get(`auth_${userToken}`);
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-    try {
-      const file = await dbClient.db.collection('files').findOne({ _id: ObjectId(id) });
-      if (!file) return res.status(404).json({ error: 'Not found' });
-
-      if (!file.isPublic && file.userId !== userId) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-
-      if (file.type === 'folder') {
-        return res.status(400).json({ error: "A folder doesn't have content" });
-      }
-
-      let filePath = path.join('/tmp/files_manager', file.localPath);
-      if (size) filePath += `_${size}`;
-
-      if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
-
-      const mimeType = mime.lookup(file.name);
-      res.setHeader('Content-Type', mimeType);
-      return res.sendFile(filePath);
-    } catch (err) {
-      return res.status(500).json({ error: 'Internal Server Error' });
+    const file = await dbClient.db.collection('files').findOne({ _id: ObjectId(id) });
+    if (!file) return res.status(404).json({ error: 'Not found' });
+    if (file.type === 'folder') {
+      return res.status(400).json({ error: "A folder doesn't have content" });
     }
+    const token = req.headers['x-token'];
+    const userId = token ? await redisClient.get(`auth_${token}`) : null;
+    if (!file.isPublic && (!userId || file.userId.toString() !== userId)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    const { localPath } = file;
+    if (!localPath || !fs.existsSync(localPath)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    const mimeType = mime.lookup(file.name) || 'application/octet-stream';
+    const fileStream = fs.createReadStream(localPath);
+    res.setHeader('Content-Type', mimeType);
+    let filePath = path.join('/tmp/files_manager', file.localPath);
+    if (size) filePath += `_${size}`;
+    res.sendFile(filePath);
+
+    return fileStream.pipe(res);
   }
 }
 
