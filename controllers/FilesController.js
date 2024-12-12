@@ -199,7 +199,6 @@ class FilesController {
 
   static async getFile(req, res) {
     const { id } = req.params;
-    const { size } = req.query;
     const file = await dbClient.db.collection('files').findOne({ _id: ObjectId(id) });
     if (!file) return res.status(404).json({ error: 'Not found' });
     if (file.type === 'folder') {
@@ -217,10 +216,6 @@ class FilesController {
     const mimeType = mime.lookup(file.name) || 'application/octet-stream';
     const fileStream = fs.createReadStream(localPath);
     res.setHeader('Content-Type', mimeType);
-    let filePath = path.join('/tmp/files_manager', file.localPath);
-    if (size) filePath += `_${size}`;
-    res.sendFile(filePath);
-
     return fileStream.pipe(res);
   }
 }
