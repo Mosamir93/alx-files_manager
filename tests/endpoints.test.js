@@ -55,7 +55,7 @@ describe('API Endpoints', () => {
     const res = await request(app).post('/files').set('x-token', token).send({
       name: 'test_file',
       type: 'file',
-      data: 'SGVsbG8gd29ybGQ=', // Base64 for "Hello world"
+      data: 'SGVsbG8gd29ybGQ=',
     });
     expect(res.statusCode).toBe(201);
     expect(res.body).toHaveProperty('id');

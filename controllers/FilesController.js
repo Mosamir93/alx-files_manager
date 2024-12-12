@@ -206,7 +206,7 @@ class FilesController {
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     try {
-      const file = await dbClient.getFileById(id);
+      const file = await dbClient.db.collection('files').findOne({ _id: ObjectId(id) });
       if (!file) return res.status(404).json({ error: 'Not found' });
 
       if (!file.isPublic && file.userId !== userId) {

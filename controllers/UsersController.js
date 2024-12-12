@@ -29,7 +29,7 @@ class UsersController {
     const result = await dbClient.db
       .collection('users')
       .insertOne({ email, password: hashedPassword });
-    
+
     const userId = result.insertedId;
 
     userQueue.add({ userId: userId.toString() });
