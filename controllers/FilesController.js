@@ -1,11 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
-const path = require('path');
 import { ObjectId } from 'mongodb';
-const mime = require('mime-types');
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
+
+const path = require('path');
+const mime = require('mime-types');
 const Queue = require('bull');
+
 const fileQueue = new Queue('fileQueue');
 
 const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager';
@@ -62,8 +64,8 @@ class FilesController {
 
     const result = await dbClient.db.collection('files').insertOne(newFile);
     newFile._id = result.insertedId;
-    if (file.type === 'image') {
-      fileQueue.add({ fileId: file._id, userId: file.userId });
+    if (type === 'image') {
+      fileQueue.add({ fileId: newFile._id, userId: newFile.userId });
     }
 
     return res.status(201).json({
